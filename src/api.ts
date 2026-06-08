@@ -16,6 +16,7 @@ import {
 import { dailyRunCounts, listQueuedJobs, listRecentRuns } from './jobs.js'
 import { type WebhookStatus, notifyAppConfigured, retryWebhook, webhookState } from './live.js'
 import { log } from './log.js'
+import { ghAvailable } from './preflight.js'
 import {
   type Automation,
   type AutomationPatch,
@@ -39,6 +40,7 @@ interface State {
   appSlug: string | null
   engine: string | null
   webhook: { status: WebhookStatus; url: string | null; detail: string | null }
+  gh: boolean
 }
 
 let lastDone: Record<DomainId, boolean> | null = null
@@ -101,6 +103,7 @@ async function computeState(): Promise<State> {
     appSlug: config.github?.slug ?? null,
     engine: isEngineId(config.engine) ? config.engine : null,
     webhook: webhookState(),
+    gh: await ghAvailable(),
   }
 }
 

@@ -37,12 +37,13 @@ export function HealthBanner({ state, refresh }: { state: State; refresh: () => 
   const broken = down.includes('app') ? down.filter((id) => id !== 'repos') : down
   const webhookDown =
     state.domains.app.done && (state.webhook.status === 'failed' || state.webhook.status === 'retrying')
+  const ghDown = !state.gh
 
   useEffect(() => {
     if (fixing && !broken.includes(fixing)) setFixing(null)
   }, [fixing, broken])
 
-  if (broken.length === 0 && !webhookDown) return null
+  if (broken.length === 0 && !webhookDown && !ghDown) return null
 
   return (
     <>
@@ -57,6 +58,7 @@ export function HealthBanner({ state, refresh }: { state: State; refresh: () => 
           </Alert>
         ))}
         {webhookDown && <WebhookRow refresh={refresh} />}
+        {ghDown && <GhRow />}
       </div>
       <Dialog
         open={fixing != null}
@@ -103,6 +105,22 @@ function WebhookRow({ refresh }: { refresh: () => Promise<void> }) {
       <span className="min-w-0 flex-1 truncate">The bot can't receive GitHub events.{error ? ` — ${error}` : ''}</span>
       <Button size="sm" variant="outline" disabled={retrying} onClick={() => void onRetry()}>
         {retrying ? 'Retrying…' : 'Retry'}
+      </Button>
+    </Alert>
+  )
+}
+
+function GhRow() {
+  return (
+    <Alert variant="destructive" className="flex items-center gap-3">
+      <WarningIcon className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate">
+        The <code>gh</code> CLI isn't on your PATH — the bot needs it to act on GitHub.
+      </span>
+      <Button size="sm" variant="outline" asChild>
+        <a href="https://cli.github.com" target="_blank" rel="noreferrer">
+          Install
+        </a>
       </Button>
     </Alert>
   )

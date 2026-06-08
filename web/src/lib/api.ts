@@ -9,6 +9,7 @@ export interface State {
   appSlug: string | null
   engine: string | null
   webhook: { status: WebhookStatus; url: string | null; detail: string | null }
+  gh: boolean
 }
 
 export interface Manifest {
