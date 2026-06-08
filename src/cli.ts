@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+import { spawn } from 'node:child_process'
+import { ensureConfigDir } from './config.js'
+import { startIngestion } from './live.js'
+import { log } from './log.js'
+import { startServer } from './server.js'
+
+function openBrowser(url: string): void {
+  const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open'
+  const child = spawn(cmd, [url], { stdio: 'ignore', detached: true, shell: process.platform === 'win32' })
+  child.on('error', () => {})
+  child.unref()
+}
+
+const command = process.argv[2]
+if (command === 'start') {
+  try {
+    ensureConfigDir()
+    const url = await startServer()
+    log('server', `running at ${url}`)
+    openBrowser(url)
+    const stopIngestion = await startIngestion()
+    const shutdown = () => {
+      void stopIngestion().finally(() => process.exit(0))
+    }
+    process.on('SIGINT', shutdown)
+    process.on('SIGTERM', shutdown)
+  } catch (err) {
+    process.stderr.write(`failed to start: ${(err as Error).message}\n`)
+    process.exit(1)
+  }
+} else {
+  process.stderr.write('usage: github-ai-bot start\n')
+  process.exit(1)
+}
