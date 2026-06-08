@@ -185,13 +185,13 @@ export interface AppManifest {
   default_events: string[]
 }
 
-export function buildManifest(name: string, redirectUrl: string): AppManifest {
+export function buildManifest(name: string, redirectUrl: string, isPublic: boolean): AppManifest {
   return {
     name,
     url: 'https://github.com/felipelincoln/github-ai-bot',
     hook_attributes: { url: 'https://github.com/felipelincoln/github-ai-bot', active: true },
     redirect_url: redirectUrl,
-    public: false,
+    public: isPublic,
     default_permissions: {
       pull_requests: 'write',
       issues: 'write',

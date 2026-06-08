@@ -143,8 +143,8 @@ export function getBot(): Promise<{ bot: BotProfile | null }> {
   return getJson<{ bot: BotProfile | null }>('/api/bot')
 }
 
-export function getManifest(): Promise<Manifest> {
-  return getJson<Manifest>('/api/setup/app/manifest')
+export function getManifest(isPublic: boolean): Promise<Manifest> {
+  return getJson<Manifest>(`/api/setup/app/manifest?public=${isPublic}`)
 }
 
 export function getRepos(): Promise<{ repos: Repo[] }> {

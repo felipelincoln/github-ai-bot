@@ -147,13 +147,13 @@ async function readJsonBody<T>(req: IncomingMessage, cap = 1_000_000): Promise<T
 
 let pending: { state: string; name: string } | null = null
 
-function manifestPayload(req: IncomingMessage) {
+function manifestPayload(req: IncomingMessage, isPublic: boolean) {
   if (!pending)
     pending = { state: randomBytes(16).toString('hex'), name: `gh-ai-bot-${randomBytes(3).toString('hex')}` }
   const host = req.headers.host ?? 'localhost'
   return {
     postUrl: `https://github.com/settings/apps/new?state=${pending.state}`,
-    manifest: buildManifest(pending.name, `http://${host}/api/setup/app/callback`),
+    manifest: buildManifest(pending.name, `http://${host}/api/setup/app/callback`, isPublic),
   }
 }
 
@@ -266,7 +266,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse, url: 
       return true
     }
     if (pathname === '/api/setup/app/manifest' && method === 'GET') {
-      json(res, 200, manifestPayload(req))
+      json(res, 200, manifestPayload(req, url.searchParams.get('public') === 'true'))
       return true
     }
     if (pathname === '/api/setup/app/callback' && method === 'GET') {
