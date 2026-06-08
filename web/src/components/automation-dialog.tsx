@@ -145,7 +145,9 @@ export function AutomationDialog({
                     <SelectValue placeholder="On event" />
                   </SelectTrigger>
                   <SelectContent>
-                    {EVENT_TYPES.map((ev) => (
+                    {EVENT_TYPES.filter(
+                      (ev) => ev === t.event || !triggers.some((x, idx) => idx !== i && x.event === ev),
+                    ).map((ev) => (
                       <SelectItem key={ev} value={ev}>
                         {ev}
                       </SelectItem>
@@ -198,15 +200,17 @@ export function AutomationDialog({
                 )}
               </div>
             ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="size-fit self-start gap-1.5 px-2 text-muted-foreground"
-              onClick={addTrigger}
-            >
-              <PlusIcon className="size-4" /> Add trigger
-            </Button>
+            {triggers.length < EVENT_TYPES.length && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="size-fit self-start gap-1.5 px-2 text-muted-foreground"
+                onClick={addTrigger}
+              >
+                <PlusIcon className="size-4" /> Add trigger
+              </Button>
+            )}
           </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
