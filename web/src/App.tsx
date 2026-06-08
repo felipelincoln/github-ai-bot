@@ -85,9 +85,9 @@ function BotIdentity({ bot }: { bot: BotProfile | null }) {
       className="flex min-w-0 items-center gap-2 text-sm font-normal tracking-tight transition-opacity hover:opacity-80"
     >
       {bot.avatar ? (
-        <img src={bot.avatar} alt="" className="size-7 shrink-0 rounded-full bg-white p-0.5" />
+        <img src={bot.avatar} alt="" className="size-7 shrink-0 rounded-md bg-white p-0.5" />
       ) : (
-        <span className="size-7 shrink-0 rounded-full bg-muted" />
+        <span className="size-7 shrink-0 rounded-md bg-muted" />
       )}
       <span className="truncate">{bot.name}</span>
       <ArrowSquareOutIcon className="size-3.5 shrink-0 text-muted-foreground" />
