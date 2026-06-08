@@ -15,7 +15,7 @@ const META: Record<CoreDomain, { row: string; title: string; description: string
   app: {
     row: "Your bot can't reach GitHub.",
     title: 'Reconnect your bot',
-    description: 'Re-create the GitHub App so the bot can act on your repositories.',
+    description: 'Re-create the GitHub App so the bot can act on the connected repositories.',
   },
   repos: {
     row: 'No repositories are connected.',
