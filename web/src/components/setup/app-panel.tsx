@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowSquareOutIcon, QuestionIcon } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { type Manifest, getManifest } from '@/lib/api'
 
@@ -37,7 +37,7 @@ export function AppPanel() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <Switch id="public-app" checked={isPublic} onCheckedChange={setIsPublic} aria-label="Public app" />
+        <Checkbox id="public-app" checked={isPublic} onCheckedChange={(c) => setIsPublic(c === true)} />
         <label htmlFor="public-app" className="text-sm">
           Public app
         </label>
