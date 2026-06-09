@@ -154,13 +154,13 @@ export function setSession(automationId: string, repositoryId: number, number: n
     .run(sessionId, automationId, repositoryId, number)
 }
 
-export function startRun(job: LeasedJob, action: string | null, effort: string | null): number {
+export function startRun(job: LeasedJob, action: string | null, event: string | null, effort: string | null): number {
   const result = openDb()
     .prepare(
-      `INSERT INTO runs (automation_id, repository_id, number, status, action, effort, started_at)
-       VALUES (?, ?, ?, 'running', ?, ?, ?)`,
+      `INSERT INTO runs (automation_id, repository_id, number, status, action, event, effort, started_at)
+       VALUES (?, ?, ?, 'running', ?, ?, ?, ?)`,
     )
-    .run(job.automation_id, job.repository_id, job.number, action, effort, nowIso())
+    .run(job.automation_id, job.repository_id, job.number, action, event, effort, nowIso())
   return Number(result.lastInsertRowid)
 }
 
@@ -187,6 +187,7 @@ export interface RecentRun {
   type: 'issue' | 'pull_request' | null
   status: 'running' | 'ok' | 'failed'
   action: string | null
+  event: string | null
   effort: string | null
   result: string | null
   session_id: string | null
@@ -199,7 +200,7 @@ export function listRecentRuns(limit: number): RecentRun[] {
   return openDb()
     .prepare(
       `SELECT r.id, r.automation_id, r.repository_id, r.number, w.repo_full_name, w.type,
-              r.status, r.action, r.effort, r.result, r.session_id, r.tokens, r.started_at, r.finished_at
+              r.status, r.action, r.event, r.effort, r.result, r.session_id, r.tokens, r.started_at, r.finished_at
          FROM runs r
          LEFT JOIN work_items w ON w.repository_id = r.repository_id AND w.number = r.number
         ORDER BY r.id DESC

@@ -59,7 +59,7 @@ function runContext(job: LeasedJob, automation: Automation): RunContext {
   const url = `https://github.com/${job.repo_full_name}/${job.type === 'pull_request' ? 'pull' : 'issues'}/${job.number}`
   const base = { repository_id: job.repository_id, repo: job.repo_full_name, number: job.number, type: job.type, url }
   const matching = matchingDeliveries(job.repository_id, job.number, automation.triggers)
-  if (matching.length === 0) return { ...base, action: null, updates: [] }
+  if (matching.length === 0) return { ...base, action: null, event: null, updates: [] }
   const since = lastSuccessfulRunStartedAt(automation.id, job.repository_id, job.number)
   const windowed = since ? matching.filter((d) => d.received_at > since) : matching
   const source = windowed.length > 0 ? windowed : [matching[0]]
@@ -72,7 +72,7 @@ function runContext(job: LeasedJob, automation: Automation): RunContext {
       updates.push(key)
     }
   }
-  return { ...base, action: matching[0].action, updates }
+  return { ...base, action: matching[0].action, event: matching[0].event_type, updates }
 }
 
 async function workerLoop(engine: Runtime): Promise<void> {
@@ -105,7 +105,7 @@ async function workerLoop(engine: Runtime): Promise<void> {
       log('pool', `dropped ${job.automation_id} ${job.repo_full_name}#${job.number} (trigger no longer matches)`)
       continue
     }
-    const runId = startRun(job, ctx.action, automation.effort ?? null)
+    const runId = startRun(job, ctx.action, ctx.event, automation.effort ?? null)
     const signal = AbortSignal.any([stopper!.signal, AbortSignal.timeout(ENGINE_TIMEOUT_MS)])
     let ok = false
     let result: string | null = null

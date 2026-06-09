@@ -65,6 +65,7 @@ function init(handle: DatabaseSync): void {
       number INTEGER NOT NULL,
       status TEXT NOT NULL CHECK (status IN ('running', 'ok', 'failed')),
       action TEXT,
+      event TEXT,
       effort TEXT,
       result TEXT,
       session_id TEXT,
@@ -74,6 +75,9 @@ function init(handle: DatabaseSync): void {
     )
   `)
   handle.exec('CREATE INDEX IF NOT EXISTS idx_runs_work_item ON runs (automation_id, repository_id, number, id)')
+  // Additive migration for databases created before the `event` column existed.
+  const runCols = handle.prepare('PRAGMA table_info(runs)').all() as Array<{ name: string }>
+  if (!runCols.some((c) => c.name === 'event')) handle.exec('ALTER TABLE runs ADD COLUMN event TEXT')
 }
 
 function enqueueJobs(handle: DatabaseSync, e: Extracted, receivedAt: string): number {

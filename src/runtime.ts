@@ -7,6 +7,7 @@ export interface RunContext {
   type: 'issue' | 'pull_request'
   url: string
   action: string | null
+  event: string | null
   updates: string[]
 }
 

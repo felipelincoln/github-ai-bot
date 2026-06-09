@@ -169,6 +169,7 @@ export interface Run {
   type: 'issue' | 'pull_request' | null
   status: 'running' | 'ok' | 'failed'
   action: string | null
+  event: string | null
   effort: string | null
   result: string | null
   session_id: string | null

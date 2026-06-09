@@ -8,7 +8,6 @@ import {
   CopyIcon,
   XCircleIcon,
 } from '@phosphor-icons/react'
-import { TriggerIcon } from '@/components/trigger-icon'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ListRow } from '@/components/ui/list-row'
@@ -17,6 +16,8 @@ import { type Queued, type Run, getRuns } from '@/lib/api'
 import { fmtTokens, relativeTime } from '@/lib/format'
 
 const STATUS_LABEL: Record<Run['status'], string> = { running: 'running', ok: 'succeeded', failed: 'failed' }
+
+const triggerLabel = (run: Run) => (run.event && run.action ? `${run.event}.${run.action}` : (run.action ?? '—'))
 
 function RunIcon({ status, className = 'size-4' }: { status: Run['status']; className?: string }) {
   if (status === 'running')
@@ -101,10 +102,7 @@ function RunDetail({ run, onClose }: { run: Run; onClose: () => void }) {
             </dd>
 
             <dt className="text-muted-foreground">Trigger</dt>
-            <dd className="flex items-center gap-1.5 text-foreground">
-              <TriggerIcon event={run.type ?? ''} className="size-3.5 shrink-0 text-muted-foreground" />
-              {run.action ?? '—'}
-            </dd>
+            <dd className="font-mono text-foreground">{triggerLabel(run)}</dd>
 
             <dt className="text-muted-foreground">Effort</dt>
             <dd className="text-foreground">{run.effort ?? 'default'}</dd>
@@ -228,10 +226,13 @@ export function RecentRuns() {
                   className={`min-w-0 flex-1 truncate text-xs ${it.run.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`}
                 >
                   <span className="font-mono">{`${it.run.repo_full_name ?? ''}#${it.run.number}`}</span>
-                  {it.run.action ? ` · ${it.run.action}` : ''}
+                  {it.run.action ? <span title={triggerLabel(it.run)}>{` · ${it.run.action}`}</span> : ''}
                   {it.run.status === 'failed' && it.run.result ? ` — ${it.run.result}` : ''}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                <span
+                  className="shrink-0 text-xs text-muted-foreground tabular-nums"
+                  title={new Date(it.run.started_at).toLocaleString()}
+                >
                   {relativeTime(it.run.started_at)}
                 </span>
               </ListRow>
