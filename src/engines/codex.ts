@@ -16,7 +16,7 @@ export const codexEngine: Engine = {
   label: 'Codex',
   recommended: true,
   models: [],
-  efforts: ['minimal', 'low', 'medium', 'high'],
+  efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
   auth: {
     mode: 'login-command',
     command: `CODEX_HOME=${shellQuote(CODEX_HOME)} codex login`,
