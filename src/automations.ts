@@ -157,7 +157,7 @@ export function createAutomation(input: NewAutomation): Automation {
   const automation: Automation = {
     id,
     name,
-    enabled: input.enabled ?? true,
+    enabled: input.enabled === undefined ? true : input.enabled === true,
     triggers: validateTriggers(input.triggers),
     trigger_repo_id: validateRepoId(input.trigger_repo_id),
     trigger_repo: validateRepo(input.trigger_repo),
@@ -212,6 +212,9 @@ export function updateAutomation(id: string, patch: AutomationPatch): Automation
         break
       case 'effort':
         next.effort = validateEffort(patch.effort)
+        break
+      case 'enabled':
+        next.enabled = patch.enabled === true
         break
       default:
         Object.assign(next, { [key]: patch[key] })

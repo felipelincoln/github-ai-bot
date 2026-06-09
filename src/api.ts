@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
-import { isOnboarded, loadConfig, markOnboarded, paths, readJsonFile, saveConfig } from './config.js'
+import { isOnboarded, loadConfig, markOnboarded, saveConfig } from './config.js'
 import { CODEX_REPOS_BASE } from './engines/codex.js'
 import { ENGINES, engineMetas, isEngineId } from './engines/index.js'
 import {
@@ -29,7 +29,7 @@ import {
   updateAutomation,
 } from './automations.js'
 
-export type DomainId = 'app' | 'repos' | 'engine' | 'automations'
+export type DomainId = 'app' | 'repos' | 'engine'
 
 const ORDER: DomainId[] = ['app', 'repos', 'engine']
 
@@ -53,7 +53,6 @@ async function logDomainChanges(
     app: domains.app.done,
     repos: domains.repos.done,
     engine: domains.engine.done,
-    automations: domains.automations.done,
   }
   if (lastDone) {
     if (now.app !== lastDone.app)
@@ -83,12 +82,10 @@ async function computeState(): Promise<State> {
   const reposDone = repoCount === null ? (lastDone?.repos ?? false) : repoCount > 0
   const engine = isEngineId(config.engine) ? ENGINES[config.engine] : null
   const engineDone = engine?.isConfigured() ?? false
-  const automationsDone = readJsonFile<unknown[]>(paths.automations, []).length > 0
   const domains: Record<DomainId, { done: boolean }> = {
     app: { done: appDone },
     repos: { done: reposDone },
     engine: { done: engineDone },
-    automations: { done: automationsDone },
   }
   await logDomainChanges(domains, {
     appSlug: config.github?.slug ?? null,
@@ -235,11 +232,12 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse, url: 
           if (avatar) {
             const upstream = await fetch(avatar, { signal: AbortSignal.timeout(10_000) })
             if (upstream.ok) {
+              const body = Buffer.from(await upstream.arrayBuffer())
               res.writeHead(200, {
                 'content-type': upstream.headers.get('content-type') ?? 'image/png',
                 'cache-control': 'no-cache',
               })
-              res.end(Buffer.from(await upstream.arrayBuffer()))
+              res.end(body)
               return true
             }
           }

@@ -1,4 +1,4 @@
-export type DomainId = 'app' | 'repos' | 'engine' | 'automations'
+export type DomainId = 'app' | 'repos' | 'engine'
 
 export type WebhookStatus = 'off' | 'starting' | 'live' | 'retrying' | 'failed'
 

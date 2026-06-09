@@ -39,8 +39,9 @@ export function ensureConfigDir(): void {
 
 function quarantineCorrupt(file: string): void {
   try {
-    renameSync(file, `${file}.corrupt`)
-    log('storage', `corrupt file reset: ${file} (renamed to ${file}.corrupt)`)
+    const stamp = `${Date.now()}-${process.pid}`
+    renameSync(file, `${file}.corrupt-${stamp}`)
+    log('storage', `corrupt file reset: ${file} (renamed to ${file}.corrupt-${stamp})`)
   } catch {}
 }
 

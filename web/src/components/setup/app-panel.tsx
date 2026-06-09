@@ -11,11 +11,15 @@ export function AppPanel() {
   const [isPublic, setIsPublic] = useState(false)
 
   useEffect(() => {
+    let active = true
     setManifest(null)
     setError(null)
     void getManifest(isPublic)
-      .then(setManifest)
-      .catch((e) => setError((e as Error).message))
+      .then((m) => active && setManifest(m))
+      .catch((e) => active && setError((e as Error).message))
+    return () => {
+      active = false
+    }
   }, [isPublic])
 
   function create() {

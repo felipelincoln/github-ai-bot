@@ -159,7 +159,7 @@ export function matchingDeliveries(repositoryId: number, number: number, trigger
     .prepare(
       `SELECT event_type, action, received_at FROM deliveries
         WHERE repository_id = ? AND number = ?
-        ORDER BY received_at DESC`,
+        ORDER BY received_at DESC, id DESC`,
     )
     .all(repositoryId, number) as unknown as MatchingDelivery[]
   return rows.filter((d) => triggers.some((t) => t.event === d.event_type && t.actions.includes(d.action)))

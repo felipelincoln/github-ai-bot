@@ -3,7 +3,6 @@ export interface AuthDescriptor {
   command?: string
   placeholder?: string
   tokenEnvVar?: string
-  tokenRe?: RegExp
 }
 
 export interface EngineWarning {
