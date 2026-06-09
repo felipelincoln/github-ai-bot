@@ -79,7 +79,8 @@ async function computeState(): Promise<State> {
   const config = loadConfig()
   const appDone = config.github != null && !(await appAuthDead())
   const repoCount = appDone ? await installationCount() : 0
-  const reposDone = repoCount > 0
+  // null = GitHub unreachable; don't regress to "no repos", keep the last known state.
+  const reposDone = repoCount === null ? (lastDone?.repos ?? false) : repoCount > 0
   const engine = isEngineId(config.engine) ? ENGINES[config.engine] : null
   const engineDone = engine?.isConfigured() ?? false
   const automationsDone = readJsonFile<unknown[]>(paths.automations, []).length > 0

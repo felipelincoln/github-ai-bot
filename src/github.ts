@@ -89,7 +89,7 @@ export async function appProfile(): Promise<AppProfile> {
 
 let reposCache: { count: number; at: number } | null = null
 
-export async function installationCount(): Promise<number> {
+export async function installationCount(): Promise<number | null> {
   if (reposCache && Date.now() - reposCache.at < HEALTH_TTL_MS) return reposCache.count
   try {
     const { data } = await appOctokit().request('GET /app/installations', {
@@ -98,7 +98,10 @@ export async function installationCount(): Promise<number> {
     reposCache = data.length > 0 ? { count: data.length, at: Date.now() } : null
     return data.length
   } catch {
-    return reposCache?.count ?? 0
+    // Transient/unreachable: fall back to the last known count, or null if we
+    // never determined one — null lets the caller tell "GitHub unreachable"
+    // apart from a genuine zero instead of falsely reporting "no repos".
+    return reposCache?.count ?? null
   }
 }
 
