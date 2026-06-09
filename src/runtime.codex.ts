@@ -152,7 +152,12 @@ export function codexRuntime(): Runtime {
           { cwd: dir, env, stdin: prompt, signal },
           fold,
         )
-        if (prior && (sessionGone(st.error) || sessionGone(res.stderr))) {
+        // Only restart fresh when the resume genuinely FAILED. A successful resume
+        // whose output merely contains "session/thread not found" (common when
+        // reviewing PRs — gh querying review threads, diff content) must NOT re-run,
+        // or it would duplicate the GitHub actions the first run already took.
+        const resumeFailed = res.exitCode !== 0 || st.error != null
+        if (prior && resumeFailed && (sessionGone(st.error) || sessionGone(res.stderr))) {
           log('engine', `codex session ${prior} gone — starting fresh`)
           st.result = null
           st.error = null
