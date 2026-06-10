@@ -1,4 +1,8 @@
 import { type ChildProcess, spawn } from 'node:child_process'
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { paths } from './config.js'
+import { log } from './log.js'
+import { reapOrphan } from './reap.js'
 
 const URL_RE = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/
 const READY_RE = /Registered tunnel connection|Connection [0-9a-f-]+ registered/i
@@ -13,9 +17,31 @@ export interface Tunnel {
 
 const liveProcs = new Set<ChildProcess>()
 
+function clearTunnelPid(): void {
+  try {
+    unlinkSync(paths.tunnelPid)
+  } catch {}
+}
+
+// cloudflared is spawned non-detached and tracked only in the in-memory set
+// above, so a hard crash (no teardown) orphans it with no handle to clean it up
+// on the next start. Persist the live PID and reap a leftover before we mint a
+// new tunnel — the command check makes PID reuse unable to kill an innocent one.
+export function reapOrphanTunnel(): void {
+  let pid: number
+  try {
+    pid = Number(readFileSync(paths.tunnelPid, 'utf8').trim())
+  } catch {
+    return // no pidfile — clean shutdown left nothing behind
+  }
+  if (reapOrphan(pid, 'cloudflared')) log('tunnel', `reaped orphaned cloudflared (pid ${pid}) from a previous crash`)
+  clearTunnelPid()
+}
+
 export function killTunnels(): void {
   for (const proc of liveProcs) proc.kill('SIGKILL')
   liveProcs.clear()
+  clearTunnelPid()
 }
 
 export function startTunnel(bin: string, localUrl: string): Promise<Tunnel> {
@@ -23,6 +49,13 @@ export function startTunnel(bin: string, localUrl: string): Promise<Tunnel> {
     stdio: ['ignore', 'ignore', 'pipe'],
   })
   liveProcs.add(proc)
+  // Record durably so a crash leftover can be reaped on the next start. A
+  // reconnect overwrites this with the new PID; killTunnels clears it.
+  if (proc.pid !== undefined) {
+    try {
+      writeFileSync(paths.tunnelPid, String(proc.pid))
+    } catch {}
+  }
   proc.once('exit', () => liveProcs.delete(proc))
   const exited = new Promise<number>((resolve) => {
     proc.once('exit', (code) => resolve(code ?? 0))

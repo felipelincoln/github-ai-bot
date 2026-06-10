@@ -13,6 +13,7 @@ export const paths = {
   automations: join(CONFIG_DIR, 'automations.json'),
   pem: join(CONFIG_DIR, 'private-key.pem'),
   db: join(CONFIG_DIR, 'github-ai-bot.db'),
+  tunnelPid: join(CONFIG_DIR, 'cloudflared.pid'),
 } as const
 
 export interface GithubApp {

@@ -6,7 +6,7 @@ import { codexRuntime } from './runtime.codex.js'
 import { getAppWebhookUrl, patchAppWebhook } from './github.js'
 import { log } from './log.js'
 import { startWorkerPool, stopWorkerPool } from './pool.js'
-import { type Tunnel, killTunnels, startTunnel } from './tunnel.js'
+import { type Tunnel, killTunnels, reapOrphanTunnel, startTunnel } from './tunnel.js'
 import { type WebhookServer, startWebhookServer } from './webhook.js'
 
 export type WebhookStatus = 'off' | 'starting' | 'live' | 'retrying' | 'failed'
@@ -127,6 +127,8 @@ function ensureLive(force = false): Promise<void> {
 
 export async function startIngestion(): Promise<() => Promise<void>> {
   stopped = false
+  // Reap a cloudflared orphaned by a previous crash before minting a new tunnel.
+  reapOrphanTunnel()
   await ensureLive()
   startWorkerPool(codexRuntime())
   // Recover deliveries missed while the bot was down — runs in the background so

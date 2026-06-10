@@ -1,6 +1,6 @@
-import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { openDb } from './deliveries.js'
+import { reapOrphan } from './reap.js'
 
 export const MAX_ATTEMPTS = 2
 
@@ -18,45 +18,16 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
-// Best-effort identity check: true only if the live PID is actually a codex
-// process, so a PID reused since the crash can't make us kill an innocent one.
-function looksLikeCodex(pid: number): boolean {
-  try {
-    const out = execFileSync('ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8', timeout: 2000 })
-    return out.toLowerCase().includes('codex')
-  } catch {
-    return false
-  }
-}
-
-// A clean shutdown SIGKILLs codex, but a crash leaves it alive and still acting
-// on GitHub. Kill such a survivor before its job is requeued, or the re-run
-// would race a duplicate against it. Returns true only if we actually killed one.
-function killOrphanCodex(pid: number): boolean {
-  // pid <= 0 would target a process group with process.kill — never signal one.
-  if (!Number.isInteger(pid) || pid <= 0) return false
-  try {
-    process.kill(pid, 0)
-  } catch {
-    return false // already gone — the normal clean-shutdown / dead case
-  }
-  if (!looksLikeCodex(pid)) return false
-  try {
-    process.kill(pid, 'SIGKILL')
-    return true
-  } catch {
-    return false
-  }
-}
-
 export function reclaimOrphans(): { jobs: number; runs: number; killed: number } {
   const handle = openDb()
-  // Reap survivors before requeuing (side effect, so outside the transaction).
+  // A clean shutdown SIGKILLs codex, but a crash leaves it alive and still
+  // acting on GitHub; reap any survivor before requeuing its job, or the re-run
+  // would race a duplicate. Side effect, so outside the transaction.
   const orphans = handle.prepare(`SELECT pid FROM jobs WHERE status = 'leased' AND pid IS NOT NULL`).all() as Array<{
     pid: number
   }>
   let killed = 0
-  for (const { pid } of orphans) if (killOrphanCodex(pid)) killed++
+  for (const { pid } of orphans) if (reapOrphan(pid, 'codex')) killed++
   handle.exec('BEGIN IMMEDIATE')
   try {
     const jobs = handle
