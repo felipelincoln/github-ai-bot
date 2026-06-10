@@ -193,6 +193,77 @@ export async function patchAppWebhook(url: string, secret: string): Promise<void
   if (!res.ok) throw new Error(`PATCH /app/hook/config → ${res.status} ${await res.text()}`)
 }
 
+export interface HookDelivery {
+  id: number
+  guid: string
+  delivered_at: string
+  event: string
+}
+
+function nextCursor(link: string | undefined): string | undefined {
+  if (!link) return undefined
+  for (const part of link.split(',')) {
+    const m = part.match(/<([^>]+)>;\s*rel="next"/)
+    if (m) {
+      try {
+        return new URL(m[1]).searchParams.get('cursor') ?? undefined
+      } catch {
+        return undefined
+      }
+    }
+  }
+  return undefined
+}
+
+// Lists App webhook deliveries newer than `since` (ISO). Deliveries come back
+// newest-first; we page until one predates the cutoff, then stop. `guid` is the
+// X-GitHub-Delivery value the webhook path dedups on; `id` fetches the payload.
+export async function listDeliveriesSince(since: string): Promise<HookDelivery[]> {
+  const app = appOctokit()
+  const out: HookDelivery[] = []
+  let cursor: string | undefined
+  for (let page = 0; page < 50; page++) {
+    const res = await app.request('GET /app/hook/deliveries', {
+      per_page: 100,
+      ...(cursor ? { cursor } : {}),
+      request: { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
+    })
+    const batch = res.data as Array<{ id: number; guid: string; delivered_at: string; event: string }>
+    if (batch.length === 0) break
+    let crossed = false
+    for (const d of batch) {
+      if (d.delivered_at < since) {
+        crossed = true
+        break
+      }
+      out.push({ id: d.id, guid: d.guid, delivered_at: d.delivered_at, event: d.event })
+    }
+    if (crossed) break
+    cursor = nextCursor(res.headers.link)
+    if (!cursor) break
+  }
+  return out
+}
+
+// Fetches one delivery's stored request body so it can be re-ingested directly,
+// without depending on the tunnel being live (unlike a redelivery attempt).
+export async function getDeliveryPayload(id: number): Promise<Record<string, unknown> | null> {
+  const res = await appOctokit().request('GET /app/hook/deliveries/{delivery_id}', {
+    delivery_id: id,
+    request: { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
+  })
+  let payload = (res.data as { request?: { payload?: unknown } }).request?.payload
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload)
+    } catch {
+      return null
+    }
+  }
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return null
+  return payload as Record<string, unknown>
+}
+
 export interface AppManifest {
   name: string
   url: string

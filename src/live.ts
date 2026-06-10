@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from 'node:timers/promises'
+import { backfillDeliveries } from './backfill.js'
 import { ensureCloudflared } from './cloudflared.js'
 import { loadConfig } from './config.js'
 import { codexRuntime } from './runtime.codex.js'
@@ -128,6 +129,9 @@ export async function startIngestion(): Promise<() => Promise<void>> {
   stopped = false
   await ensureLive()
   startWorkerPool(codexRuntime())
+  // Recover deliveries missed while the bot was down — runs in the background so
+  // it never blocks startup, and the live path is already capturing new events.
+  void backfillDeliveries().catch((err) => log('backfill', `failed: ${(err as Error).message}`))
   return async () => {
     stopped = true
     await ensureChain.catch(() => {})

@@ -159,6 +159,10 @@ export function openDb(): DatabaseSync {
   return handle
 }
 
+export function deliveryExists(deliveryId: string): boolean {
+  return openDb().prepare('SELECT 1 FROM deliveries WHERE delivery_id = ?').get(deliveryId) !== undefined
+}
+
 export interface MatchingDelivery {
   event_type: string
   action: string
