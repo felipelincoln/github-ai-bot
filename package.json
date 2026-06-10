@@ -38,6 +38,8 @@
     "format": "biome format --write .",
     "lint": "biome lint .",
     "check": "biome check .",
+    "pretest": "npm run build",
+    "test": "node --test test/*.test.mjs",
     "start": "node dist/cli.js start",
     "prepublishOnly": "npm run build"
   },

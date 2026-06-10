@@ -8,7 +8,7 @@ import { wakeWorkers } from './pool.js'
 
 const MAX_BODY = 25 * 1024 * 1024
 
-function verifySignature(secret: string, body: Buffer, header: string | undefined): boolean {
+export function verifySignature(secret: string, body: Buffer, header: string | undefined): boolean {
   if (!header) return false
   const expected = `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`
   const a = Buffer.from(header)
