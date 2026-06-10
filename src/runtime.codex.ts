@@ -115,7 +115,12 @@ export function codexRuntime(): Runtime {
 
   return {
     ready: () => codexEngine.isConfigured(),
-    async run(automation: Automation, ctx: RunContext, signal: AbortSignal): Promise<RunResult> {
+    async run(
+      automation: Automation,
+      ctx: RunContext,
+      signal: AbortSignal,
+      onSpawn?: (pid: number) => void,
+    ): Promise<RunResult> {
       let token: string
       try {
         token = await installationToken(ctx.repo, ctx.repository_id)
@@ -149,7 +154,7 @@ export function codexRuntime(): Runtime {
         let res = await spawnJsonl(
           CODEX_BIN,
           buildArgv(automation, prior),
-          { cwd: dir, env, stdin: prompt, signal },
+          { cwd: dir, env, stdin: prompt, signal, onSpawn },
           fold,
         )
         // Only restart fresh when the resume genuinely FAILED. A successful resume
@@ -163,7 +168,12 @@ export function codexRuntime(): Runtime {
           st.error = null
           st.sessionId = null
           st.tokens = null
-          res = await spawnJsonl(CODEX_BIN, buildArgv(automation, null), { cwd: dir, env, stdin: prompt, signal }, fold)
+          res = await spawnJsonl(
+            CODEX_BIN,
+            buildArgv(automation, null),
+            { cwd: dir, env, stdin: prompt, signal, onSpawn },
+            fold,
+          )
         }
         const ok = res.exitCode === 0 && st.error == null
         const result = st.result ?? st.error ?? (res.exitCode !== 0 ? res.stderr.slice(-4000) : null)

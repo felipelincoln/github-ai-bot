@@ -22,5 +22,7 @@ export interface RunResult {
 
 export interface Runtime {
   ready?(): boolean
-  run(automation: Automation, ctx: RunContext, signal: AbortSignal): Promise<RunResult>
+  // onSpawn reports each engine child PID as it starts, so the pool can persist
+  // it under the lease and reap a survivor on the next start after a crash.
+  run(automation: Automation, ctx: RunContext, signal: AbortSignal, onSpawn?: (pid: number) => void): Promise<RunResult>
 }

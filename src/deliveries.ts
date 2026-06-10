@@ -51,6 +51,7 @@ function init(handle: DatabaseSync): void {
       lease_until TEXT,
       lease_token TEXT,
       session_id TEXT,
+      pid INTEGER,
       last_error TEXT,
       last_event_at TEXT NOT NULL,
       PRIMARY KEY (automation_id, repository_id, number)
@@ -76,9 +77,11 @@ function init(handle: DatabaseSync): void {
   `)
   handle.exec('CREATE INDEX IF NOT EXISTS idx_runs_work_item ON runs (automation_id, repository_id, number, id)')
   handle.exec('CREATE INDEX IF NOT EXISTS idx_runs_started ON runs (started_at)')
-  // Additive migration for databases created before the `event` column existed.
+  // Additive migrations for databases created before a column existed.
   const runCols = handle.prepare('PRAGMA table_info(runs)').all() as Array<{ name: string }>
   if (!runCols.some((c) => c.name === 'event')) handle.exec('ALTER TABLE runs ADD COLUMN event TEXT')
+  const jobCols = handle.prepare('PRAGMA table_info(jobs)').all() as Array<{ name: string }>
+  if (!jobCols.some((c) => c.name === 'pid')) handle.exec('ALTER TABLE jobs ADD COLUMN pid INTEGER')
 }
 
 function enqueueJobs(handle: DatabaseSync, e: Extracted, receivedAt: string): number {

@@ -12,6 +12,7 @@ import {
   lastSuccessfulRunStartedAt,
   leaseNext,
   reclaimOrphans,
+  setJobPid,
   setSession,
   startRun,
 } from './jobs.js'
@@ -97,13 +98,17 @@ async function runJob(engine: Runtime, job: LeasedJob, myEpoch: number): Promise
   let tokens: number | null = null
   let sessionId: string | null | undefined
   try {
-    const res = await engine.run(automation, ctx, signal)
+    const res = await engine.run(automation, ctx, signal, (pid) => setJobPid(job, pid))
     ok = res.ok
     result = res.result
     tokens = res.tokens ?? null
     sessionId = res.sessionId
   } catch (err) {
     result = (err as Error).message
+  } finally {
+    // The engine has exited by the time run() settles, so any pid left in the
+    // DB after this can only be a crash survivor for reclaimOrphans to reap.
+    setJobPid(job, null)
   }
   if (!running || poolEpoch !== myEpoch) {
     finishRun(runId, 'failed', 'interrupted')
@@ -162,7 +167,11 @@ export function startWorkerPool(engine: Runtime): void {
   wakePending = false
   waiters = []
   const reclaimed = reclaimOrphans()
-  if (reclaimed.jobs > 0) log('pool', `reclaimed ${reclaimed.jobs} orphaned job(s) on start`)
+  if (reclaimed.jobs > 0)
+    log(
+      'pool',
+      `reclaimed ${reclaimed.jobs} orphaned job(s) on start${reclaimed.killed > 0 ? ` (killed ${reclaimed.killed} surviving engine process(es))` : ''}`,
+    )
   const n = concurrency()
   const myEpoch = poolEpoch
   loops = Array.from({ length: n }, () =>

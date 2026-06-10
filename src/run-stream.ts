@@ -5,6 +5,9 @@ export interface SpawnOptions {
   env: Record<string, string>
   stdin: string
   signal: AbortSignal
+  // Called with the child PID the moment it spawns, so the caller can record it
+  // durably and reap a survivor if the bot crashes mid-run.
+  onSpawn?: (pid: number) => void
 }
 
 export interface SpawnResult {
@@ -29,6 +32,7 @@ export function spawnJsonl(
       signal: opts.signal,
       killSignal: 'SIGKILL',
     })
+    if (child.pid !== undefined) opts.onSpawn?.(child.pid)
     let stdout = ''
     let stderr = ''
     const onLine = (line: string): void => {
