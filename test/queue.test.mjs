@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,10 +9,27 @@ import { test } from 'node:test'
 process.env.GITHUB_AI_BOT_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'gab-test-queue-'))
 const { ensureConfigDir, paths } = await import('../dist/config.js')
 const { ingestDelivery, openDb } = await import('../dist/deliveries.js')
-const { MAX_ATTEMPTS, ack, deleteJobsFor, fail, getSession, leaseNext, reclaimOrphans, setSession } = await import(
-  '../dist/jobs.js'
-)
+const { MAX_ATTEMPTS, ack, deleteJobsFor, fail, getSession, leaseNext, reclaimOrphans, setJobPid, setSession } =
+  await import('../dist/jobs.js')
 ensureConfigDir()
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+const alive = (pid) => {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+async function waitDead(pid, ms = 2000) {
+  const t = Date.now()
+  while (Date.now() - t < ms) {
+    if (!alive(pid)) return true
+    await wait(50)
+  }
+  return !alive(pid)
+}
 
 const auto = (id, repoId) => ({
   id,
@@ -24,7 +42,7 @@ const auto = (id, repoId) => ({
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
 })
-writeFileSync(paths.automations, JSON.stringify([1, 2, 3, 4, 5].map((n) => auto(`a${n}`, n))))
+writeFileSync(paths.automations, JSON.stringify([1, 2, 3, 4, 5, 6].map((n) => auto(`a${n}`, n))))
 const ev = (repoId, num) => ({
   repository_id: repoId,
   repo: 'o/r',
@@ -102,4 +120,17 @@ test('reclaimOrphans requeues a leased job; deleteJobsFor removes it', () => {
   assert.equal(status('a5'), 'queued', 'leased job reclaimed to queued')
   assert.equal(deleteJobsFor('a5'), 1)
   assert.equal(status('a5'), undefined, 'job row gone')
+})
+
+test('reclaimOrphans reaps a recorded live engine pid before requeuing', async () => {
+  ingestDelivery('d6', ev(6, 6), new Date().toISOString())
+  const job = leaseNext(60_000)
+  assert.equal(job.automation_id, 'a6')
+  const fake = spawn(process.execPath, ['-e', 'setTimeout(()=>{}, 60000)', 'codex-marker'], { stdio: 'ignore' })
+  await wait(150)
+  setJobPid(job, fake.pid)
+  const r = reclaimOrphans()
+  assert.equal(r.killed, 1, 'the recorded live codex pid is reaped')
+  assert.ok(await waitDead(fake.pid), 'reaped engine process is dead')
+  assert.equal(status('a6'), 'queued', 'job requeued after the survivor was killed')
 })

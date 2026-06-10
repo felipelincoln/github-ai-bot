@@ -24,15 +24,15 @@ test('extract: a plain issues event', () => {
   })
 })
 
-test('extract: an issue_comment on a PR is classified as pull_request, with the comment url', () => {
+test('extract: an issue_comment on a PR is a pull_request, and the comment url wins over the issue url', () => {
   const e = extract('issue_comment', {
     action: 'created',
     repository: repo,
-    issue: { number: 7, pull_request: { url: 'x' } },
+    issue: { number: 7, pull_request: { url: 'x' }, html_url: 'https://gh/i' },
     comment: { html_url: 'https://gh/c' },
   })
   assert.equal(e.type, 'pull_request')
-  assert.equal(e.url, 'https://gh/c')
+  assert.equal(e.url, 'https://gh/c', 'actionUrl prefers comment over issue')
 })
 
 test('extract: pull_request number falls back to payload.number', () => {

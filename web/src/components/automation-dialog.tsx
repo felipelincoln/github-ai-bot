@@ -113,7 +113,10 @@ export function AutomationDialog({
     try {
       if (automation) {
         const patch: AutomationUpdate = { ...fields }
-        if (effort !== (automation.effort ?? '')) patch.effort = effort || undefined
+        // Send the value as-is (including '') when it changed: collapsing '' to
+        // undefined would drop the key from the JSON body, so clearing the
+        // effort would never reach the server. validateEffort('') clears it.
+        if (effort !== (automation.effort ?? '')) patch.effort = effort
         await updateAutomation(automation.id, patch)
       } else {
         await createAutomation({ id, ...fields, effort: effort || undefined })

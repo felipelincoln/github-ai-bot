@@ -6,7 +6,7 @@ import { test } from 'node:test'
 
 process.env.GITHUB_AI_BOT_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'gab-test-config-'))
 const { ensureConfigDir, loadConfig, paths, readJsonFile } = await import('../dist/config.js')
-const { listAutomations, updateAutomation } = await import('../dist/automations.js')
+const { createAutomation, getAutomation, listAutomations, updateAutomation } = await import('../dist/automations.js')
 ensureConfigDir()
 
 test('loadConfig drops malformed known fields but keeps unknown keys', () => {
@@ -59,4 +59,26 @@ test('automations persist is non-destructive: unrecognized entries survive a sav
     raw.some((x) => x.id === 'keep' && x.enabled === false),
     'the targeted entry was updated',
   )
+})
+
+test('updateAutomation: an empty effort clears it, an absent effort key preserves it', () => {
+  createAutomation({
+    id: 'eff',
+    name: 'Eff',
+    prompt: 'p',
+    trigger_repo_id: 1,
+    trigger_repo: 'o/r',
+    triggers: [{ event: 'issues', actions: ['opened'] }],
+    effort: 'high',
+  })
+  assert.equal(getAutomation('eff').effort, 'high')
+  // The clear-effort UI sends effort='' (not undefined, which would drop the key).
+  updateAutomation('eff', { effort: '' })
+  assert.equal(getAutomation('eff').effort, undefined, "effort='' clears it")
+  // A patch without an effort key must leave it untouched.
+  updateAutomation('eff', { name: 'Eff2' })
+  assert.equal(getAutomation('eff').effort, undefined)
+  updateAutomation('eff', { effort: 'low' })
+  updateAutomation('eff', { name: 'Eff3' })
+  assert.equal(getAutomation('eff').effort, 'low', 'absent effort key preserves the stored value')
 })
