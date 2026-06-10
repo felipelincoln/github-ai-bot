@@ -10,7 +10,11 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -21,3 +25,26 @@ jobs:
       - run: npx biome ci .
       - run: npm run typecheck
       - run: npm run build
+      - run: node --test test/*.test.mjs
+      - name: Smoke-test the built server
+        shell: bash
+        run: |
+          export GITHUB_AI_BOT_CONFIG_DIR="$(mktemp -d)"
+          export PORT=4999
+          node dist/cli.js start &
+          pid=$!
+          ok=
+          for _ in $(seq 1 40); do
+            if curl -fsS "http://127.0.0.1:$PORT/api/state" | grep -q '"onboarded"'; then ok=1; break; fi
+            sleep 0.25
+          done
+          kill "$pid" 2>/dev/null || true
+          [ -n "$ok" ] || { echo "server never served /api/state"; exit 1; }
+          echo "smoke ok"
+      - name: Verify the packaged artifact
+        shell: bash
+        run: |
+          out="$(npm pack --dry-run 2>&1)"
+          echo "$out"
+          echo "$out" | grep -q 'dist/cli.js' || { echo "dist/cli.js missing from the package"; exit 1; }
+          echo "$out" | grep -q 'dist/web/' || { echo "dist/web missing from the package"; exit 1; }
