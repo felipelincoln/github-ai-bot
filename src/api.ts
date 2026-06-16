@@ -158,8 +158,7 @@ function avatarAllowed(url: string): boolean {
 let pending: { state: string; name: string } | null = null
 
 function manifestPayload(req: IncomingMessage, isPublic: boolean) {
-  if (!pending)
-    pending = { state: randomBytes(16).toString('hex'), name: `snaildit-${randomBytes(3).toString('hex')}` }
+  if (!pending) pending = { state: randomBytes(16).toString('hex'), name: `snaildit-${randomBytes(3).toString('hex')}` }
   const host = req.headers.host ?? 'localhost'
   return {
     postUrl: `https://github.com/settings/apps/new?state=${pending.state}`,
